@@ -1,6 +1,8 @@
-# PWA QR Code Scanner
+# PWA QR Code Scanner with BC-UR support
 
-QR Code scanner in a Svelte Component
+QR Code scanner in a Svelte Component. It supports [BC-UR Encoding](https://github.com/ngraveio/bc-ur) which are also known as "animated" QR-Codes. 
+
+BC-UR not to be confused with [BBQR - Better Bitcoin QR)(https://bbqr.org/), which isn't supported yet. Both standards are supported by major Bitcoin wallets such as Electrum, BlueWallet, Sparrow Wallet and numerous hardware wallets.
 
 ## Use
 

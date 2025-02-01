@@ -4,8 +4,11 @@
 	export let active: boolean;
 	export let decodedData: string;
 	export let onNewScan: () => void;
-
-	let data, regex;
+	
+	$: console.log("decodedData", decodedData)
+	
+	let data;
+	let regex = new RegExp(''); // Initialize with empty regex
 
 	$: if (active) {
 		const urlExp =
@@ -15,11 +18,11 @@
 </script>
 
 <slot {decodedData}>
-	<div class="results">
+	<div class="results" data-testid="results">
 		<div class="results__data">
 			{#if !decodedData || decodedData === ''}
 				<span class="results__empty">Scan a QR Code to send data here. </span>
-			{:else if decodedData?.match(regex)}
+			{:else if typeof decodedData === 'string' && decodedData.match(regex)}
 				<a class="results__link" href={decodedData} target="_blank" rel="noopener noreferrer">
 					{decodedData}
 				</a>
@@ -88,11 +91,6 @@
 
 	.results__button:hover {
 		background-color: #39b300;
-	}
-
-	.results__scan-icon {
-		width: 1.5rem;
-		margin-right: 10px;
 	}
 
 	.results__link,
