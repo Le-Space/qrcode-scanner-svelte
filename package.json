@@ -1,6 +1,7 @@
 {
-	"name": "bcur-code-scanner-svelte",
-	"version": "0.0.1",
+	"name": "@peerpiper/bcur-code-scanner-svelte",
+	"repository": "https://github.com/PeerPiper/qrcode-scanner-svelte",
+	"version": "2.0.0",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build && npm run prepack",
