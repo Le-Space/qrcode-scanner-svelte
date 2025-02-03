@@ -7,7 +7,7 @@ BC-UR not to confuse with [BBQR - Better Bitcoin QR](https://bbqr.org/), which i
 
 Basic use:
 
-Run ```npm i @peerpiper/bcur-code-scanner-svelte``` 
+Run ```npm i @doichain/bcur-code-scanner-svelte``` 
 
 ```js
 <Scanner />
