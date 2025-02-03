@@ -5,10 +5,16 @@ import * as bitcoin from 'bitcoinjs-lib';
 test('scanner component shows results after successful scan', async ({ page }) => {
     // Navigate to the page
     await page.goto('/');
+
+    // Grant camera permissions before evaluating
+    await page.context().grantPermissions(['camera']);
     
     // Verify scanner is visible
     const scanner = page.locator('.scanner');
     await expect(scanner).toBeVisible();
+    //can we allow camera permisson?
+
+
     
     // Mock successful QR code scan by accessing the component's context
     await page.evaluate(() => {
@@ -41,7 +47,9 @@ test('scanner component shows results after successful scan', async ({ page }) =
     await expect(scanner).not.toHaveClass(/scanner--hidden/);
 });
 
-test.only('scanner component can read a QR code from camera', async ({ page }) => {
+test('scanner component can read a QR code from camera', async ({ page }) => {
+    // Grant camera permissions before evaluating
+    await page.context().grantPermissions(['camera']);
     await page.goto('/');
     
     // Create a mock camera stream
@@ -123,9 +131,9 @@ test.only('scanner component can read a QR code from camera', async ({ page }) =
   
 });
 
-test('scanner component can read a PSBT QR code', async ({ page }) => {
+test.only('scanner component can read a PSBT QR code', async ({ page }) => {
     await page.goto('/');
-    
+    await page.context().grantPermissions(['camera']);
     // Create a more complex PSBT with multiple inputs and outputs
     const psbt = new bitcoin.Psbt();
     
@@ -178,99 +186,120 @@ test('scanner component can read a PSBT QR code', async ({ page }) => {
         const { default: vkQr } = await import('https://esm.sh/@vkontakte/vk-qr');
         console.log('Creating QR codes for parts:', qrData);
         
-        const qrSvgs = qrData.map((part, index) => {
-            const qrSvg = vkQr.createQR(part, {
+        // Create QR codes first and verify they're loaded
+        const images = await Promise.all(qrData.map(async (urPart, index) => {
+            console.log(`Generating QR code ${index} for UR part:`, urPart);
+            
+            // Generate QR SVG
+            const qrSvg = vkQr.createQR(urPart, {
                 qrSize: 256,
                 isShowLogo: false,
                 foregroundColor: '#000000',
                 backgroundColor: '#FFFFFF'
             });
-            console.log(`Created SVG ${index}:`, qrSvg.substring(0, 100) + '...');
-            return qrSvg;
-        });
-        
-        // Create array of images from SVGs
-        const images = await Promise.all(qrSvgs.map(async (svg, index) => {
+            
+            // Create image from SVG
             const img = new Image();
-            const svgBlob = new Blob([svg], { type: 'image/svg+xml' });
+            const svgBlob = new Blob([qrSvg], { type: 'image/svg+xml' });
             const svgUrl = URL.createObjectURL(svgBlob);
             
-            try {
-                await new Promise((resolve, reject) => {
-                    img.onload = () => {
-                        console.log(`Image ${index} loaded:`, {
-                            width: img.width,
-                            height: img.height,
-                            naturalWidth: img.naturalWidth,
-                            naturalHeight: img.naturalHeight
-                        });
-                        resolve();
-                    };
-                    img.onerror = (e) => {
-                        console.error(`Failed to load image ${index}:`, e);
-                        reject(new Error(`Failed to load image ${index}: ${e}`));
-                    };
-                    img.src = svgUrl;
-                });
-            } catch (error) {
-                console.error(`Error loading image ${index}:`, error);
-            } finally {
-                URL.revokeObjectURL(svgUrl);
-            }
+            // Wait for image to load
+            await new Promise((resolve, reject) => {
+                img.onload = () => {
+                    console.log(`QR code ${index} loaded:`, {
+                        width: img.width,
+                        height: img.height,
+                        complete: img.complete
+                    });
+                    resolve();
+                };
+                img.onerror = (e) => {
+                    console.error(`Failed to load QR code ${index}:`, e);
+                    reject(e);
+                };
+                img.src = svgUrl;
+            });
+            
+            URL.revokeObjectURL(svgUrl);
             return img;
         }));
-
-        let currentIndex = 0;
-        console.log('Starting animation with images:', images.map(img => ({
-            width: img.width,
-            height: img.height,
-            complete: img.complete
-        })));
         
-        // Set up interval to cycle through QR codes
-        const qrInterval = setInterval(() => {
-            currentIndex = (currentIndex + 1) % images.length;
-        }, 500);
-
-        // Animation loop
-        let animationFrame;
+        console.log(`Successfully generated ${images.length} QR code images`);
+        
+        let currentIndex = 0;
+        let lastQRUpdate = 0;
+        const QR_CHANGE_INTERVAL = 500;
+        
         function updateCanvas(timestamp) {
+            if (timestamp - lastQRUpdate >= QR_CHANGE_INTERVAL) {
+                currentIndex = (currentIndex + 1) % images.length;
+                lastQRUpdate = timestamp;
+                console.log(`Switching to QR code ${currentIndex}`);
+            }
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Draw "camera feed" background
+            // Draw black background
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw current QR code
+            // Verify current image
             const currentImage = images[currentIndex];
-            const scale = 2; // Make QR code larger
+            if (!currentImage || !currentImage.complete) {
+                console.error('Current QR image is not ready:', {
+                    index: currentIndex,
+                    image: currentImage,
+                    complete: currentImage?.complete
+                });
+                return;
+            }
+            
+            // Draw white background for QR code with padding
+            const scale = 2;
             const scaledWidth = 256 * scale;
             const scaledHeight = 256 * scale;
             const x = (canvas.width - scaledWidth) / 2;
             const y = (canvas.height - scaledHeight) / 2;
             
-            // Add white background behind QR code
             ctx.fillStyle = '#fff';
-            ctx.fillRect(x, y, scaledWidth, scaledHeight);
+            // Add 20px padding around QR code
+            ctx.fillRect(x - 20, y - 20, scaledWidth + 40, scaledHeight + 40);
             
-            // Draw QR code
-            ctx.drawImage(currentImage, x, y, scaledWidth, scaledHeight);
+            // Draw QR code with debug info
+            try {
+                ctx.drawImage(currentImage, x, y, scaledWidth, scaledHeight);
+                if (timestamp % 1000 < 16) { // Log once per second
+                    console.log('Drew QR code:', {
+                        index: currentIndex,
+                        x, y,
+                        width: scaledWidth,
+                        height: scaledHeight,
+                        imageComplete: currentImage.complete
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to draw QR code:', e);
+            }
             
             animationFrame = requestAnimationFrame(updateCanvas);
         }
         
+        // Start animation loop
+        console.log('Starting animation loop');
         animationFrame = requestAnimationFrame(updateCanvas);
         
         // Create stream
         const stream = canvas.captureStream(30);
+        console.log('Created camera stream at 30fps');
         
         // Mock camera API
         const originalGetUserMedia = navigator.mediaDevices.getUserMedia;
         navigator.mediaDevices.getUserMedia = async () => stream;
+        console.log('Mocked getUserMedia with canvas stream');
         
         return () => {
+            console.log('Cleaning up animation and camera mock');
             cancelAnimationFrame(animationFrame);
-            clearInterval(qrInterval);  // Clean up interval
             navigator.mediaDevices.getUserMedia = originalGetUserMedia;
         };
     }, urParts);  // urParts is passed here as the second argument to page.evaluate()
