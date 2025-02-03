@@ -4,11 +4,10 @@ QR Code scanner in a Svelte Component with [BC-UR Encoding](https://github.com/n
 
 BC-UR not to confuse with [BBQR - Better Bitcoin QR](https://bbqr.org/), which isn't supported yet. Both standards are supported by major Bitcoin wallets such as Electrum, BlueWallet, Sparrow Wallet and numerous other hardware wallets.
 
-## Use
 
-[Demo](https://peerpiper.github.io/qrcode-scanner-svelte)
+Basic use:
 
-Basic
+Run ```npm i @peerpiper/bcur-code-scanner-svelte``` 
 
 ```js
 <Scanner />
@@ -33,3 +32,8 @@ Custom
 		{/if}
 	</Scanner>
 ```
+
+## Run a demo 
+1. Checkout this repo and run ```npm i```
+2. Run ```npm run dev```
+
